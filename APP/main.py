@@ -1,0 +1,47 @@
+from fastapi import FastAPI,Request
+from models import UsuarioCreate,UsuarioUpdate,Salida,UsuarioSalida,CarreraCreate,CarreraUpdate
+import uvicorn
+from dao import Conexion,UsuarioDAO,CarreraDAO
+app=FastAPI()
+
+@app.get("/",tags=["Inicio"],summary="Home")
+def home():
+    return "Bienvenido a la APIRest de Proyecto BD"
+@app.post("/usuarios",tags=["Usuarios"],summary="Crear Usuario",response_model=Salida)
+async def crearUsuario(request:Request,usuario:UsuarioCreate)->Salida:
+    usuarioDAO=UsuarioDAO(request.app.cn.db)
+    return usuarioDAO.agregar(usuario)
+@app.get("/usuarios/{idUsuario}",tags=["Usuarios"],summary="Consultar Usuario",response_model=UsuarioSalida)
+def consultarUsuario(request:Request,idUsuario:int)->UsuarioSalida:
+    usuarioDAO=UsuarioDAO(request.app.cn.db)
+    return usuarioDAO.consultaPorID(idUsuario)
+@app.put("/usuarios/{idUsuario}",tags=["Usuarios"],summary="Modificar Usuario",response_model=Salida)
+def modificarUsuario(request:Request,idUsuario:int,usuario:UsuarioUpdate)->Salida:
+    usuarioDAO=UsuarioDAO(request.app.cn.db)
+    return usuarioDAO.modificar(idUsuario,usuario)
+@app.delete("/usuarios/{idUsuario}",tags=["Usuarios"],summary="Cancelar Usuario",response_model=Salida)
+def cancelarUsuario(request:Request,idUsuario:int)->Salida:
+    usuarioDAO=UsuarioDAO(request.app.cn.db)
+    return usuarioDAO.cancelar(idUsuario)
+@app.post("/carreras",tags=["Carreras"],summary="Crear Carrera",response_model=Salida)
+async def crearCarrera(request:Request,carrera:CarreraCreate)->Salida:
+    carreraDAO=CarreraDAO(request.app.cn.db)
+    return carreraDAO.agregar(carrera)
+@app.put("/carreras/{idCarrera}",tags=["Carreras"],summary="Modificar Carrera",response_model=Salida)
+def modificarCarrera(request:Request,idCarrera:int,carrera:CarreraUpdate)->Salida:
+    carreraDAO=CarreraDAO(request.app.cn.db)
+    return carreraDAO.modificar(idCarrera,carrera)
+@app.delete("/carreras/{idCarrera}",tags=["Carreras"],summary="Cancelar Carrera",response_model=Salida)
+def cancelarCarrera(request:Request,idCarrera:int)->Salida:
+    carreraDAO=CarreraDAO(request.app.cn.db)
+    return carreraDAO.cancelar(idCarrera)
+@app.on_event('startup')
+def startup():
+    conexion=Conexion()
+    app.cn=conexion
+@app.on_event('shutdown')
+def shutdown():
+    app.cn.cerrar()
+
+if __name__ == '__main__':
+   uvicorn.run("main:app",reload=True)
