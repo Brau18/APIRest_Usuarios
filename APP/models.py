@@ -38,3 +38,52 @@ class CarreraCreate(BaseModel):
 class CarreraUpdate(BaseModel):
     nombreCarrera:Optional[str]=None
     descripcion:Optional[str]=None
+    
+class DocenteCreate(BaseModel):
+    idUsuario:int
+    gradoEstudio:str
+    fechaIngreso:date
+    correoInstitucional:str
+    horasFrenteAlGrupo:int=Field(...,ge=0)
+    horasDocencia:int=Field(...,ge=0)
+    horasAdministrativas:int=Field(...,ge=0)
+    tipoContrato:str
+class DocenteUpdate(BaseModel):
+    gradoEstudio:Optional[str]=None
+    estadoLaboral:Optional[str]=None
+    correoInstitucional:Optional[str]=None
+    horasFrenteAlGrupo:Optional[int]=Field(None,ge=0)
+    horasDocencia:Optional[int]=Field(None,ge=0)
+    horasAdministrativas:Optional[int]=Field(None,ge=0)
+    tipoContrato:Optional[str]=None
+class Docente(BaseModel):
+    idDocente:int
+    idUsuario:int
+    gradoEstudio:str
+    fechaIngreso:date
+    estadoLaboral:str
+    correoInstitucional:str
+    horasFrenteAlGrupo:int
+    horasDocencia:int
+    horasAdministrativas:int
+    tipoContrato:str
+class DocenteSalida(BaseModel):
+    codigo:int
+    mensaje:str
+    docente:Docente|None=None
+class Carrera(BaseModel):
+    idCarrera:int
+    nombreCarrera:str
+    descripcion:str|None=None
+    activo:int
+class CarreraSalida(BaseModel):
+    codigo:int
+    mensaje:str
+    carrera:Carrera|None=None
+class DocenteCarreraCreate(BaseModel):
+    idDocente:int
+    idCarrera:int
+class DocenteCarreraUpdate(BaseModel):
+    idCarrera:int
+    fechaAsignacion:date
+

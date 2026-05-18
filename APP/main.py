@@ -1,7 +1,7 @@
 from fastapi import FastAPI,Request
-from models import UsuarioCreate,UsuarioUpdate,Salida,UsuarioSalida,CarreraCreate,CarreraUpdate
+from models import UsuarioCreate,UsuarioUpdate,Salida,UsuarioSalida,CarreraCreate,CarreraUpdate, DocenteCarreraCreate, DocenteCarreraUpdate, DocenteCreate, DocenteSalida, DocenteUpdate, CarreraSalida
 import uvicorn
-from dao import Conexion,UsuarioDAO,CarreraDAO
+from dao import Conexion,UsuarioDAO,CarreraDAO, DocenteDAO, DocenteCarreraDAO
 app=FastAPI()
 
 @app.get("/",tags=["Inicio"],summary="Home")
@@ -42,6 +42,36 @@ def startup():
 @app.on_event('shutdown')
 def shutdown():
     app.cn.cerrar()
+
+@app.post("/docentes",tags=["Docentes"],summary="Crear Docente",response_model=Salida)
+async def crearDocente(request:Request,docente:DocenteCreate)->Salida:
+    docenteDAO=DocenteDAO(request.app.cn.db)
+    return docenteDAO.agregar(docente)
+@app.get("/docentes/{idDocente}",tags=["Docentes"],summary="Consultar Docente",response_model=DocenteSalida)
+def consultarDocente(request:Request,idDocente:int)->DocenteSalida:
+    docenteDAO=DocenteDAO(request.app.cn.db)
+    return docenteDAO.consultaPorID(idDocente)
+@app.put("/docentes/{idDocente}",tags=["Docentes"],summary="Modificar Docente",response_model=Salida)
+def modificarDocente(request:Request,idDocente:int,docente:DocenteUpdate)->Salida:
+    docenteDAO=DocenteDAO(request.app.cn.db)
+    return docenteDAO.modificar(idDocente,docente)
+@app.delete("/docentes/{idDocente}",tags=["Docentes"],summary="Cancelar Docente",response_model=Salida)
+def cancelarDocente(request:Request,idDocente:int)->Salida:
+    docenteDAO=DocenteDAO(request.app.cn.db)
+    return docenteDAO.cancelar(idDocente)
+@app.get("/carreras/{idCarrera}",tags=["Carreras"],summary="Consultar Carrera",response_model=CarreraSalida)
+def consultarCarrera(request:Request,idCarrera:int)->CarreraSalida:
+    carreraDAO=CarreraDAO(request.app.cn.db)
+    return carreraDAO.consultaPorID(idCarrera)
+@app.post("/docentes-carreras",tags=["Docentes-Carreras"],summary="Crear Asignacion",response_model=Salida)
+async def crearAsignacion(request:Request,asignacion:DocenteCarreraCreate)->Salida:
+    docenteCarreraDAO=DocenteCarreraDAO(request.app.cn.db)
+    return docenteCarreraDAO.agregar(asignacion)
+@app.put("/docentes-carreras/{idDocente}/{idCarrera}",tags=["Docentes-Carreras"],summary="Modificar Asignacion",response_model=Salida)
+def modificarAsignacion(request:Request,idDocente:int,idCarrera:int,asignacion:DocenteCarreraUpdate)->Salida:
+    docenteCarreraDAO=DocenteCarreraDAO(request.app.cn.db)
+    return docenteCarreraDAO.modificar(idDocente,idCarrera,asignacion)
+
 
 if __name__ == '__main__':
    uvicorn.run("main:app",reload=True)
