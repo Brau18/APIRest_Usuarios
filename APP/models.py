@@ -25,6 +25,7 @@ class Usuario(BaseModel):
     RFC:str
     CURP:str
     correo:str
+    rol:str
     activo:int
     fechaRegistro:date
 class Salida(BaseModel):
@@ -136,3 +137,7 @@ class AsignacionSalida(BaseModel):
     codigo:int
     mensaje:str
     asignacion:Asignacion|None=None
+class AsignacionesSalida(BaseModel):
+    codigo:int
+    mensaje:str
+    asignaciones:List[Asignacion]|None=None

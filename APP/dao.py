@@ -1,5 +1,5 @@
 import mysql.connector
-from models import UsuarioCreate,UsuarioUpdate,Salida,UsuarioSalida,CarreraCreate,CarreraUpdate,HabilidadCreate,HabilidadUpdate,HabilidadSalida,HabilidadesVigentesSalida,AsignacionSalida
+from models import Usuario,UsuarioCreate,UsuarioUpdate,Salida,UsuarioSalida,CarreraCreate,CarreraUpdate,CarreraSalida,DocenteSalida,HabilidadCreate,HabilidadUpdate,HabilidadSalida,HabilidadesVigentesSalida,AsignacionesSalida
 from datetime import date
 DBHOST='localhost'
 DBPORT=3306
@@ -30,6 +30,20 @@ class Conexion:
 class UsuarioDAO:
     def __init__(self,db):
         self.db=db
+    def autenticar(self,correo:str,contrasena:str):
+        try:
+            cursor=self.db.cursor(dictionary=True)
+            cursor.execute(
+                "select idUsuario,nombre,apellidoPaterno,apellidoMaterno,telefono,RFC,CURP,correo,rol,activo,fechaRegistro from usuarios where correo=%s and contrasena=%s and activo=1",
+                (correo,contrasena)
+            )
+            row=cursor.fetchone()
+            cursor.close()
+            if row:
+                return Usuario(**row)
+            return None
+        except Exception:
+            return None
     def agregar(self,usuario:UsuarioCreate):
         salida=Salida(codigo=0,mensaje="")
         try:
@@ -63,7 +77,7 @@ class UsuarioDAO:
         salida=UsuarioSalida(codigo=0,mensaje="",usuario=None)
         try:
             cursor=self.db.cursor(dictionary=True)
-            cursor.execute(f"select idUsuario,nombre,apellidoPaterno,apellidoMaterno,telefono,RFC,CURP,correo,activo,fechaRegistro from usuarios where idUsuario={idUsuario}")
+            cursor.execute(f"select idUsuario,nombre,apellidoPaterno,apellidoMaterno,telefono,RFC,CURP,correo,rol,activo,fechaRegistro from usuarios where idUsuario={idUsuario}")
             usuario=cursor.fetchone()
             if usuario:
                 salida.codigo=200
@@ -495,26 +509,46 @@ class DocenteCarreraDAO:
             salida["codigo"]=500
             salida["mensaje"]=f"Error:{ex}"
         return salida
-    def consultaPorID(self,idDocente:int,idCarrera:int):
-        salida=AsignacionSalida(codigo=0,mensaje="",asignacion=None)
+    def consultaPorDocente(self,idDocente:int):
+        salida=AsignacionesSalida(codigo=0,mensaje="",asignaciones=[])
         try:
             cursor=self.db.cursor(dictionary=True)
-            cursor.execute(
-                "select dc.idDocente,dc.idCarrera,dc.fechaAsignacion,concat(u.nombre,' ',u.apellidoPaterno,' ',u.apellidoMaterno) as nombreDocente,c.nombreCarrera from docentes_carreras dc join docentes d on dc.idDocente=d.idDocente join usuarios u on d.idUsuario=u.idUsuario join carreras c on dc.idCarrera=c.idCarrera where dc.idDocente=%s and dc.idCarrera=%s",
-                (idDocente,idCarrera)
-            )
-            asignacion=cursor.fetchone()
-            if asignacion:
-                salida.codigo=200
-                salida.mensaje="Consulta de la asignacion"
-                salida.asignacion=asignacion
-            else:
+            cursor.execute("select idDocente from docentes where idDocente=%s",(idDocente,))
+            if not cursor.fetchone():
                 salida.codigo=404
-                salida.mensaje="La asignacion no existe"
+                salida.mensaje="El docente no existe"
+                cursor.close()
+                return salida
+            cursor.execute(
+                "select dc.idDocente,dc.idCarrera,dc.fechaAsignacion,concat(u.nombre,' ',u.apellidoPaterno,' ',u.apellidoMaterno) as nombreDocente,c.nombreCarrera from docentes_carreras dc join docentes d on dc.idDocente=d.idDocente join usuarios u on d.idUsuario=u.idUsuario join carreras c on dc.idCarrera=c.idCarrera where dc.idDocente=%s",
+                (idDocente,)
+            )
+            salida.codigo=200
+            salida.mensaje="Asignaciones del docente"
+            salida.asignaciones=list(cursor.fetchall())
             cursor.close()
         except Exception as ex:
             salida.codigo=500
             salida.mensaje=f"Error:{ex}"
+        return salida
+    def cancelarPorDocente(self,idDocente:int):
+        salida={"codigo":0,"mensaje":""}
+        try:
+            cursor=self.db.cursor(dictionary=True)
+            cursor.execute("select idDocente from docentes where idDocente=%s",(idDocente,))
+            if not cursor.fetchone():
+                salida["codigo"]=404
+                salida["mensaje"]="El docente no existe"
+                cursor.close()
+                return salida
+            cursor.execute("delete from docentes_carreras where idDocente=%s",(idDocente,))
+            self.db.commit()
+            salida["codigo"]=200
+            salida["mensaje"]=f"Asignaciones del docente con id:{idDocente} canceladas exitosamente"
+            cursor.close()
+        except Exception as ex:
+            salida["codigo"]=500
+            salida["mensaje"]=f"Error:{ex}"
         return salida
 
 class HabilidadDAO:
