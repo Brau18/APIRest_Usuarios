@@ -1,5 +1,5 @@
 import mysql.connector
-from models import UsuarioCreate,UsuarioUpdate,Salida,UsuarioSalida,CarreraCreate,CarreraUpdate
+from models import UsuarioCreate,UsuarioUpdate,Salida,UsuarioSalida,CarreraCreate,CarreraUpdate,HabilidadCreate,HabilidadUpdate,HabilidadSalida,HabilidadesVigentesSalida,AsignacionSalida
 from datetime import date
 DBHOST='localhost'
 DBPORT=3306
@@ -245,11 +245,29 @@ class CarreraDAO:
             salida.codigo=500
             salida.mensaje=f"Error:{ex}"
         return salida
+    def consultaPorID(self,idCarrera:int):
+        salida=CarreraSalida(codigo=0,mensaje="",carrera=None)
+        try:
+            cursor=self.db.cursor(dictionary=True)
+            cursor.execute("select * from carreras where idCarrera=%s",(idCarrera,))
+            carrera=cursor.fetchone()
+            if carrera:
+                salida.codigo=200
+                salida.mensaje="Consulta de la carrera"
+                salida.carrera=carrera
+            else:
+                salida.codigo=404
+                salida.mensaje="Carrera no encontrada"
+            cursor.close()
+        except Exception as ex:
+            salida.codigo=500
+            salida.mensaje=f"Error:{ex}"
+        return salida
 
 class DocenteDAO:
     def __init__(self,db):
         self.db=db
-    def agregar(self,docente:DocenteCreate):
+    def agregar(self,docente):
         salida={"codigo":0,"mensaje":""}
         try:
             cursor=self.db.cursor(dictionary=True)
@@ -308,7 +326,7 @@ class DocenteDAO:
             salida.codigo=500
             salida.mensaje=f"Error:{ex}"
         return salida
-    def modificar(self,idDocente:int,docente:DocenteUpdate):
+    def modificar(self,idDocente:int,docente):
         salida={"codigo":0,"mensaje":""}
         try:
             cursor=self.db.cursor(dictionary=True)
@@ -379,32 +397,10 @@ class DocenteDAO:
             salida["mensaje"]=f"Error:{ex}"
         return salida
 
-class CarreraDAO:
-    def __init__(self,db):
-        self.db=db
-    def consultaPorID(self,idCarrera:int):
-        salida=CarreraSalida(codigo=0,mensaje="",carrera=None)
-        try:
-            cursor=self.db.cursor(dictionary=True)
-            cursor.execute("select * from carreras where idCarrera=%s",(idCarrera,))
-            carrera=cursor.fetchone()
-            if carrera:
-                salida.codigo=200
-                salida.mensaje="Consulta de la carrera"
-                salida.carrera=carrera
-            else:
-                salida.codigo=404
-                salida.mensaje="Carrera no encontrada"
-            cursor.close()
-        except Exception as ex:
-            salida.codigo=500
-            salida.mensaje=f"Error:{ex}"
-        return salida
-
 class DocenteCarreraDAO:
     def __init__(self,db):
         self.db=db
-    def agregar(self,asignacion:DocenteCarreraCreate):
+    def agregar(self,asignacion):
         salida={"codigo":0,"mensaje":""}
         try:
             cursor=self.db.cursor(dictionary=True)
@@ -439,7 +435,7 @@ class DocenteCarreraDAO:
             salida["codigo"]=500
             salida["mensaje"]=f"Error:{ex}"
         return salida
-    def modificar(self,idDocente:int,idCarrera:int,asignacion:DocenteCarreraUpdate):
+    def modificar(self,idDocente:int,idCarrera:int,asignacion):
         salida={"codigo":0,"mensaje":""}
         try:
             cursor=self.db.cursor(dictionary=True)
@@ -473,6 +469,208 @@ class DocenteCarreraDAO:
             self.db.commit()
             salida["codigo"]=200
             salida["mensaje"]=f"Asignacion modificada exitosamente"
+            cursor.close()
+        except Exception as ex:
+            salida["codigo"]=500
+            salida["mensaje"]=f"Error:{ex}"
+        return salida
+    def cancelar(self,idDocente:int,idCarrera:int):
+        salida={"codigo":0,"mensaje":""}
+        try:
+            cursor=self.db.cursor(dictionary=True)
+            cursor.execute("select * from docentes_carreras where idDocente=%s and idCarrera=%s",
+                          (idDocente,idCarrera))
+            if not cursor.fetchone():
+                salida["codigo"]=404
+                salida["mensaje"]="La asignacion no existe"
+                cursor.close()
+                return salida
+            cursor.execute("delete from docentes_carreras where idDocente=%s and idCarrera=%s",
+                          (idDocente,idCarrera))
+            self.db.commit()
+            salida["codigo"]=200
+            salida["mensaje"]="Asignacion eliminada exitosamente"
+            cursor.close()
+        except Exception as ex:
+            salida["codigo"]=500
+            salida["mensaje"]=f"Error:{ex}"
+        return salida
+    def consultaPorID(self,idDocente:int,idCarrera:int):
+        salida=AsignacionSalida(codigo=0,mensaje="",asignacion=None)
+        try:
+            cursor=self.db.cursor(dictionary=True)
+            cursor.execute(
+                "select dc.idDocente,dc.idCarrera,dc.fechaAsignacion,concat(u.nombre,' ',u.apellidoPaterno,' ',u.apellidoMaterno) as nombreDocente,c.nombreCarrera from docentes_carreras dc join docentes d on dc.idDocente=d.idDocente join usuarios u on d.idUsuario=u.idUsuario join carreras c on dc.idCarrera=c.idCarrera where dc.idDocente=%s and dc.idCarrera=%s",
+                (idDocente,idCarrera)
+            )
+            asignacion=cursor.fetchone()
+            if asignacion:
+                salida.codigo=200
+                salida.mensaje="Consulta de la asignacion"
+                salida.asignacion=asignacion
+            else:
+                salida.codigo=404
+                salida.mensaje="La asignacion no existe"
+            cursor.close()
+        except Exception as ex:
+            salida.codigo=500
+            salida.mensaje=f"Error:{ex}"
+        return salida
+
+class HabilidadDAO:
+    def __init__(self,db):
+        self.db=db
+    def agregar(self,habilidad:HabilidadCreate):
+        salida={"codigo":0,"mensaje":""}
+        try:
+            cursor=self.db.cursor(dictionary=True)
+            cursor.execute("select idDocente from docentes where idDocente=%s",(habilidad.idDocente,))
+            if not cursor.fetchone():
+                salida["codigo"]=404
+                salida["mensaje"]="El docente no existe"
+                cursor.close()
+                return salida
+            if habilidad.fechaObtencion>date.today():
+                salida["codigo"]=400
+                salida["mensaje"]="La fecha de obtencion no puede ser una fecha futura"
+                cursor.close()
+                return salida
+            if habilidad.fechaVigencia<=habilidad.fechaObtencion:
+                salida["codigo"]=400
+                salida["mensaje"]="La fecha de vigencia debe ser posterior a la fecha de obtencion"
+                cursor.close()
+                return salida
+            niveles_permitidos=['básico','intermedio','avanzado']
+            if habilidad.nivel not in niveles_permitidos:
+                salida["codigo"]=400
+                salida["mensaje"]="El nivel no es un valor permitido (básico, intermedio, avanzado)"
+                cursor.close()
+                return salida
+            cursor.execute(
+                "insert into habilidades(idDocente,nombreCurso,tipoCertificado,institucionEmisora,fechaObtencion,fechaVigencia,descripcion,nivel,activo) values(%s,%s,%s,%s,%s,%s,%s,%s,1)",
+                (habilidad.idDocente,habilidad.nombreCurso,habilidad.tipoCertificado,
+                 habilidad.institucionEmisora,habilidad.fechaObtencion,habilidad.fechaVigencia,
+                 habilidad.descripcion,habilidad.nivel)
+            )
+            self.db.commit()
+            salida["codigo"]=201
+            salida["mensaje"]="Habilidad creada exitosamente con id:"+str(cursor.lastrowid)
+            cursor.close()
+        except Exception as ex:
+            salida["codigo"]=500
+            salida["mensaje"]=f"Error:{ex}"
+        return salida
+    def consultaPorID(self,idHabilidad:int):
+        salida=HabilidadSalida(codigo=0,mensaje="",habilidad=None)
+        try:
+            cursor=self.db.cursor(dictionary=True)
+            cursor.execute("select * from habilidades where idHabilidad=%s",(idHabilidad,))
+            habilidad=cursor.fetchone()
+            if habilidad:
+                salida.codigo=200
+                salida.mensaje="Consulta de la habilidad"
+                salida.habilidad=habilidad
+            else:
+                salida.codigo=404
+                salida.mensaje="Habilidad no encontrada"
+            cursor.close()
+        except Exception as ex:
+            salida.codigo=500
+            salida.mensaje=f"Error:{ex}"
+        return salida
+    def consultaVigentes(self,idDocente:int):
+        salida=HabilidadesVigentesSalida(codigo=0,mensaje="",habilidades=[])
+        try:
+            cursor=self.db.cursor(dictionary=True)
+            cursor.execute("select idDocente from docentes where idDocente=%s",(idDocente,))
+            if not cursor.fetchone():
+                salida.codigo=404
+                salida.mensaje="El docente no existe"
+                cursor.close()
+                return salida
+            cursor.execute(
+                "select idHabilidad,nombreCurso,tipoCertificado,fechaVigencia,nivel from habilidades where idDocente=%s and activo=1 and fechaVigencia>=curdate()",
+                (idDocente,)
+            )
+            salida.codigo=200
+            salida.mensaje="Listado de habilidades vigentes"
+            salida.habilidades=list(cursor.fetchall())
+            cursor.close()
+        except Exception as ex:
+            salida.codigo=500
+            salida.mensaje=f"Error:{ex}"
+        return salida
+    def modificar(self,idHabilidad:int,habilidad:HabilidadUpdate):
+        salida={"codigo":0,"mensaje":""}
+        try:
+            cursor=self.db.cursor(dictionary=True)
+            cursor.execute("select * from habilidades where idHabilidad=%s",(idHabilidad,))
+            habilidadRec=cursor.fetchone()
+            if not habilidadRec:
+                salida["codigo"]=404
+                salida["mensaje"]="Habilidad no encontrada"
+                cursor.close()
+                return salida
+            if habilidadRec['activo']==0:
+                salida["codigo"]=400
+                salida["mensaje"]="La habilidad no se encuentra activa"
+                cursor.close()
+                return salida
+            data=habilidad.model_dump(exclude_unset=True)
+            if not data:
+                salida["codigo"]=400
+                salida["mensaje"]="Debes proporcionar un valor a modificar"
+                cursor.close()
+                return salida
+            if 'nivel' in data:
+                niveles_permitidos=['básico','intermedio','avanzado']
+                if data['nivel'] not in niveles_permitidos:
+                    salida["codigo"]=400
+                    salida["mensaje"]="El nivel no es un valor permitido"
+                    cursor.close()
+                    return salida
+            fechaVigencia=data.get('fechaVigencia',habilidadRec['fechaVigencia'])
+            if fechaVigencia<=habilidadRec['fechaObtencion']:
+                salida["codigo"]=400
+                salida["mensaje"]="La fecha de vigencia debe ser posterior a la fecha de obtencion"
+                cursor.close()
+                return salida
+            campos=",".join([f"{k}=%s" for k in data.keys()])
+            valores=list(data.values())
+            valores.append(idHabilidad)
+            cursor.execute(f"update habilidades set {campos} where idHabilidad=%s",valores)
+            self.db.commit()
+            if cursor.rowcount>0:
+                salida["codigo"]=200
+                salida["mensaje"]=f"Habilidad con id:{idHabilidad} modificada exitosamente"
+            else:
+                salida["codigo"]=400
+                salida["mensaje"]="No se pudo modificar la habilidad"
+            cursor.close()
+        except Exception as ex:
+            salida["codigo"]=500
+            salida["mensaje"]=f"Error:{ex}"
+        return salida
+    def cancelar(self,idHabilidad:int):
+        salida={"codigo":0,"mensaje":""}
+        try:
+            cursor=self.db.cursor(dictionary=True)
+            cursor.execute("select * from habilidades where idHabilidad=%s",(idHabilidad,))
+            habilidadRec=cursor.fetchone()
+            if not habilidadRec:
+                salida["codigo"]=404
+                salida["mensaje"]="Habilidad no encontrada"
+                cursor.close()
+                return salida
+            if habilidadRec['activo']==0:
+                salida["codigo"]=400
+                salida["mensaje"]="La habilidad ya se encuentra cancelada"
+                cursor.close()
+                return salida
+            cursor.execute("update habilidades set activo=0 where idHabilidad=%s",(idHabilidad,))
+            self.db.commit()
+            salida["codigo"]=200
+            salida["mensaje"]=f"Habilidad con id:{idHabilidad} cancelada exitosamente"
             cursor.close()
         except Exception as ex:
             salida["codigo"]=500

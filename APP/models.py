@@ -1,6 +1,6 @@
 from pydantic import BaseModel,Field
 from datetime import date
-from typing import Optional
+from typing import Optional,List
 class UsuarioCreate(BaseModel):
     nombre:str
     apellidoPaterno:str
@@ -38,7 +38,6 @@ class CarreraCreate(BaseModel):
 class CarreraUpdate(BaseModel):
     nombreCarrera:Optional[str]=None
     descripcion:Optional[str]=None
-    
 class DocenteCreate(BaseModel):
     idUsuario:int
     gradoEstudio:str
@@ -86,4 +85,54 @@ class DocenteCarreraCreate(BaseModel):
 class DocenteCarreraUpdate(BaseModel):
     idCarrera:int
     fechaAsignacion:date
-
+class HabilidadCreate(BaseModel):
+    idDocente:int
+    nombreCurso:str
+    tipoCertificado:str
+    institucionEmisora:str
+    fechaObtencion:date
+    fechaVigencia:date
+    descripcion:Optional[str]=None
+    nivel:str
+class HabilidadUpdate(BaseModel):
+    nombreCurso:Optional[str]=None
+    tipoCertificado:Optional[str]=None
+    institucionEmisora:Optional[str]=None
+    fechaVigencia:Optional[date]=None
+    descripcion:Optional[str]=None
+    nivel:Optional[str]=None
+class Habilidad(BaseModel):
+    idHabilidad:int
+    idDocente:int
+    nombreCurso:str
+    tipoCertificado:str
+    institucionEmisora:str
+    fechaObtencion:date
+    fechaVigencia:date
+    descripcion:str|None=None
+    nivel:str
+    activo:int
+class HabilidadSalida(BaseModel):
+    codigo:int
+    mensaje:str
+    habilidad:Habilidad|None=None
+class HabilidadVigente(BaseModel):
+    idHabilidad:int
+    nombreCurso:str
+    tipoCertificado:str
+    fechaVigencia:date
+    nivel:str
+class HabilidadesVigentesSalida(BaseModel):
+    codigo:int
+    mensaje:str
+    habilidades:List[HabilidadVigente]|None=None
+class Asignacion(BaseModel):
+    idDocente:int
+    idCarrera:int
+    fechaAsignacion:date
+    nombreDocente:str
+    nombreCarrera:str
+class AsignacionSalida(BaseModel):
+    codigo:int
+    mensaje:str
+    asignacion:Asignacion|None=None
